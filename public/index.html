@@ -140,25 +140,15 @@
 
     <script>
         var dataSource = {
-                datasets: [
-                    {
-                        data: [],
-                        backgroundColor: [
-                            '#ffcd56',
-                            '#ff6384',
-                            '#36a2eb',
-                            '#fd6b19',
-                            '#84DCCF',
-                            '#3A1772',
-                            '#EFC7E5',
-                            '#CFEE9E',
-                            '#B97375'
-                        ]
-                    }
-                ],
-                labels: []
-            };
-
+            datasets: [
+                {
+                    data: [],  // Budget amounts
+                    backgroundColor: []  // Corresponding colors for each budget category
+                }
+            ],
+            labels: []  // Budget category names (titles)
+        };
+    
         function createChart() {
             var ctx = document.getElementById('myChart').getContext('2d');
             var myPieChart = new Chart(ctx, {
@@ -166,67 +156,80 @@
                 data: dataSource
             });
         }
-
+    
         function getBudget() {
             axios.get('http://localhost:3000/budget')
-            .then(function (res) {
-                console.log(res);
-                for (var i = 0; i < res.data.myBudget.length; i++) {
-                    //dataSource.datasets[0].data[i] = res.data.myBudget[i].budget;
-                    dataSource.datasets[0].data.push(res.data.myBudget[i].budget);
-                    //dataSource.labels[i] = res.data.myBudget[i].title;
-                    dataSource.labels.push(res.data.myBudget[i].title);
-                    //createChart();
-                }
-                createChart();
-            });
+                .then(function (res) {
+                    console.log(res.data);
+                    
+                    dataSource.datasets[0].data = [];
+                    dataSource.labels = [];
+                    dataSource.datasets[0].backgroundColor = [];
+
+                    for (var i = 0; i < res.data.length; i++) {
+                        // Convert 'budget' from string to a number
+                        dataSource.datasets[0].data.push(parseInt(res.data[i].budget, 10)); 
+                        dataSource.labels.push(res.data[i].title); 
+
+                        // Adding color to array
+                        dataSource.datasets[0].backgroundColor.push(res.data[i].color);
+                    }
+                    createChart();  
+                })
+                .catch(function (error) {
+                    console.error("Error fetching budget data", error);
+                });
         }
-
+    
         getBudget();
-
+    
         function createD3Chart(data) {
-        var svg = d3.select("#d3Chart"),
-            width = 200,
-            height = 200,
-            radius = Math.min(width, height) / 2;
-
-        var pie = d3.layout.pie().sort(null).value(function(d) { return d.budget; });
-
-        var arc = d3.svg.arc().outerRadius(radius - 10).innerRadius(0);
-
-        var color = d3.scale.category20();
-
-        svg.attr("width", width).attr("height", height)
-            .append("g")
-            .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
-
-        var g = svg.select("g")
-            .selectAll(".arc")
-            .data(pie(data))
-            .enter().append("g")
-            .attr("class", "arc");
-
-        g.append("path")
-            .attr("d", arc)
-            .style("fill", function(d) { return color(d.data.title); });
-
-        g.append("text")
-            .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
-            .attr("dy", ".35em")
-            .style("text-anchor", "middle")
-            .text(function(d) { return d.data.title; });
-    }
-
-    function fetchD3Data() {
-        axios.get('http://localhost:3000/budget')
-        .then(function (res) {
-            createD3Chart(res.data.myBudget);
-        });
-    }
-
-    fetchD3Data();
-
+            var svg = d3.select("#d3Chart"),
+                width = 200,
+                height = 200,
+                radius = Math.min(width, height) / 2;
+    
+            var pie = d3.layout.pie().sort(null).value(function(d) { return Number(d.budget); });  // Convert 'budget' to number
+    
+            var arc = d3.svg.arc().outerRadius(radius - 10).innerRadius(0);
+    
+            var color = d3.scale.category20();
+    
+            svg.attr("width", width).attr("height", height)
+                .append("g")
+                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+    
+            var g = svg.select("g")
+                .selectAll(".arc")
+                .data(pie(data))
+                .enter().append("g")
+                .attr("class", "arc");
+    
+            g.append("path")
+                .attr("d", arc)
+                .style("fill", function(d) { return d.data.color; });  // Use color from MongoDB data
+    
+            g.append("text")
+                .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+                .attr("dy", ".35em")
+                .style("text-anchor", "middle")
+                .text(function(d) { return d.data.title; });
+        }
+    
+        function fetchD3Data() {
+            axios.get('http://localhost:3000/budget')
+                .then(function (res) {
+                    // Pass the data array directly to the D3 chart creation function
+                    createD3Chart(res.data);  
+                })
+                .catch(function (error) {
+                    console.error("Error fetching D3 data", error);
+                });
+        }
+    
+        fetchD3Data();
     </script>
+    
 
 </body>
 </html>
